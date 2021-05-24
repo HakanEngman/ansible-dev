@@ -1,0 +1,17 @@
+---
+
+- name: intro playbook
+  # comments should ADD description to ansible
+  # which already has a self desribing nature
+  connection: local # implies this playbook is running against the controller
+  hosts: localhost
+  gather_facts: no # if connection is "local" set this to "no" or you will just collect "facts" about yourself
+                   # defines the root variable "ansible_facts" with fact data collected from the target host(s)
+  tasks:
+          - name: first task - print a message
+            debug:                                           # python3 debug.py --msg "A message displayed by ansible"
+                    msg: A message displayed by ansible      # to generalize a bit. ;)
+
+          - name: second task - display a variable
+            debug:
+                    var: myvar
