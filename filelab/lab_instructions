@@ -1,0 +1,309 @@
+Ansible Module - file
+Lab Objective
+The objective of this lab is to learn about the file module, which can be used to create files, directories, and more.
+
+In this lab, you'll create ~/station_docs/ on some target host machines. A common mistake is to assume modules outputting data will create non-existent directories. Instead, it is much more common that the module will simply fail. Therefore, it is important to understand how directories might be created.
+
+Procedure
+Change directory to the /home/student/ directory.
+
+student@bchd:~$ cd ~
+
+This lab uses the planetexpress team. If they are already built, skip ahead now. Otherwise, run the teardown script (you may already have this):
+
+student@bchd:~$ wget https://static.alta3.com/projects/ansible/deploy/max-teardown.sh
+
+Run the teardown script.
+
+student@bchd:~$ bash max-teardown.sh
+
+Download the setup script for this lab.
+
+student@bchd:~$ wget https://static.alta3.com/projects/ansible/deploy/pexpress-setup.sh
+
+Run the setup script for this lab.
+
+student@bchd:~$ bash pexpress-setup.sh
+
+To ssh into these machines without a password, we will need to copy over a key. Type alta3 when prompted.
+
+student@bchd:~$ ssh-copy-id bender@10.10.2.3
+
+To ssh into these machines without a password, we will need to copy over a key. Type alta3 when prompted.
+
+student@bchd:~$ ssh-copy-id fry@10.10.2.4
+
+To ssh into these machines without a password, we will need to copy over a key. Type alta3 when prompted.
+
+student@bchd:~$ ssh-copy-id zoidberg@10.10.2.5
+
+Farnsworth has some issues with copying his key, so we'll connect with a password.
+
+We want to stay organized, so create a directory structure, ~/ans/inv/dev/.
+
+student@bchd:~$ mkdir -p ~/ans/inv/dev/
+
+Edit your inventory file. We'll describe this group within ~/ans/inv/dev/hosts
+
+student@bchd:~$ vim ~/ans/inv/dev/hosts
+
+Notice that this inventory has a unique entry for the var fileuser. Ensure that you have the following entry within your inventory (you can have other group entries, just ensure you have 'at least' the following).
+
+
+[planetexpress]
+bender      ansible_host=10.10.2.3 ansible_user=bender ansible_python_interpreter=/usr/bin/python3 fileuser=bender
+fry         ansible_host=10.10.2.4 ansible_user=fry ansible_python_interpreter=/usr/bin/python3 fileuser=fry
+zoidberg    ansible_host=10.10.2.5 ansible_user=zoidberg ansible_python_interpreter=/usr/bin/python3 fileuser=zoidberg
+farnsworth  ansible_host=10.10.2.6 ansible_user=farnsworth ansible_ssh_pass=alta3 fileuser=farnsworth
+Save and exit.
+
+Looks like farnsworth wants to use a password to connect. To do that, we should install sshpass. Do that now.
+
+student@bchd:~$ sudo apt install sshpass
+
+Ensure your copy of ansible.cfg is accurate.
+
+student@bchd:~$ vim ~/.ansible.cfg
+
+Your file should reflect the following values:
+
+
+[defaults]
+# default location of inventory
+# this can be a file or a directory
+inventory = /home/student/ans/inv/dev/
+# prevents playbook from hanging on new connections
+host_key_checking = no
+Save and exit with :wq
+
+Let's review usage of a few modules before we continue. The file module allows us to ensure a file or directory exists or is removed. Note: If you tell Ansible to access a directory that does not exist, the playbook will throw an error!
+
+student@bchd:~$ ansible-doc file
+
+If necessary, press q to quit the ansible-doc utility.
+
+Create a basic playbook file called playbook-file.yml
+
+student@bchd:~$ vim ~/ans/playbook-file.yml
+
+Create the following playbook. Notice that this playbook uses the loop keyword.
+
+
+---
+- name: A playbook showing the file module
+  hosts: planetexpress
+  
+  vars:
+    # the variable "st" is mapped to "directory"
+    st: directory
+
+  tasks:
+  - name: "Create directory where Space Station documents will reside"
+    become_user: root
+    become: true
+    file:
+      path: "/home/{{ item }}/station_docs/"
+      state: "{{ st }}"
+      owner: "{{ item }}"
+      group: "{{ item }}"
+      mode: "0755"
+    loop: [fry, bender, zoidberg]
+Save and exit.
+
+Run the playbook, expect it to fail
+
+student@bchd:~$ ansible-playbook ~/ans/playbook-file.yml
+
+As you can see, there were errors with this approach. Do you know why? The {{ item }} will start an iteration for the items in the list and try to make that change to each host. The hosts, however, do not have one another's hostname as a user or a group, so then you receive that error.
+
+Not only did it not complete cleanly, it had some unintended consequences. SSH over to bender, and check out the results.
+
+student@bchd:~$ ssh bender@10.10.2.3
+
+List the local directories.
+
+bender@bender:~$ ls
+
+List the directories in /home/ on the bender machine.
+
+bender@bender:~$ ls /home/
+
+Interesting. So we can see a Space Station Docs, but the way we wrote our loop, it also created additional home directories on our machine. Bender, now also has a /home/fry/ and /home/zoidberg directory on it (the same error occurred on the other machines as well). However, they lack the new directory station_docs. We didn't want this to happen. We just wanted station_docs to appear in each user's home directory.
+
+bender@bender:~$ exit
+
+To "undo" the damage, rerun the playbook, but change the value of st to "absent".
+
+student@bchd:~$ ansible-playbook ~/ans/playbook-file.yml -e "st=absent"
+
+Create a new playbook.
+
+student@bchd:~$ vim ~/ans/playbook-file02.yml
+
+We can use a host variable to fix this. Edit the ~/ans/playbook-file02.yml so that it looks like the following:
+
+
+---
+- name: A playbook showing the file module
+  hosts: planetexpress
+
+  tasks:
+   - name: "Create directory where Space Station documents will reside"
+     become_user: root
+     become: true
+     file:
+        # the var "fileuser" is a host variable
+        path: "/home/{{ fileuser }}/station_docs/"
+        state: directory
+        owner: "{{ fileuser }}"
+        group: "{{ fileuser }}"
+        mode: "0755"
+Save and exit with :wq
+
+Run the playbook again.
+
+student@bchd:~$ ansible-playbook ~/ans/playbook-file02.yml
+
+This time, it works! Now let's connect to the remote hosts with secure shell to see the changes we made. First, to bender to ensure the Space Station directory has been created.
+
+student@bchd:~$ ssh bender@10.10.2.3
+
+List the files and folders on the bender machine.
+
+bender@bender:~$ ls
+
+Exit bender machine.
+
+bender@bender:~$ exit
+
+Now to check on the fry machine.
+
+student@bchd:~$ ssh fry@10.10.2.4
+
+List the files and folder on the fry machine.
+
+fry@fry:~$ ls
+
+Exit the fry machine
+
+fry@fry:~$ exit
+
+Finally, check out the zoidberg machine.
+
+student@bchd:~$ ssh zoidberg@10.10.2.5
+
+List the files and folders on the zoidberg machine.
+
+zoidberg@zoidberg:~$ ls
+
+Exit from the ssh session back to the beachhead host.
+
+zoidberg@zoidberg:~$ exit
+
+So what we just learned, was that a host variable is mapped ONLY to the host beside which it appears in the inventory file. Cool!
+
+Create a new playbook.
+
+student@bchd:~$ vim ~/ans/playbook-file03.yml
+
+Create the following solution
+
+
+---
+- name: A playbook showing the file module
+  hosts: planetexpress
+
+  tasks:
+   - name: Create directory where Space Station documents will reside
+     become_user: root
+     become: true
+     file:
+        # the var "fileuser" is a host variable
+        path: "/home/{{ fileuser }}/station_docs/"
+        state: directory
+        owner: "{{ fileuser }}"
+        group: "{{ fileuser }}"
+        mode: "0755"
+
+   - name: Copy content into a file with the year-mo-day
+     copy:
+        # the var "fileuser" is a host variablen
+        # ansible_date_time.date is defined by gather_facts
+        dest: "/home/{{ fileuser }}/station_docs/navdata-{{ ansible_date_time.date }}.txt"
+        content: "Earth\nMars\nSaturn\nEuropa\n"
+Save and exit.
+
+Run the playbook.
+
+student@bchd:~$ ansible-playbook ~/ans/playbook-file03.yml
+
+Confirm that the files were created by logging into bender machine.
+
+student@bchd:~$ ssh bender@10.10.2.3
+
+List the files and folders on the bender machine.
+
+bender@bender:~$ ls station_docs/
+
+View the contents of the document in station_docs
+
+bender@bender:~$ cat station_docs/navdata-*
+
+Exit bender machine.
+
+bender@bender:~$ exit
+
+Ensure the fry, and zoidberg have their own versions of this document.
+
+Make one last example of this playbook.
+
+student@bchd:~$ vim ~/ans/playbook-file04.yml
+
+Read about the ansible_user variable here: https://docs.ansible.com/ansible/latest/reference_appendices/special_variables.html Then, create the following solution.
+
+
+---
+- name: A playbook showing the file module
+  hosts: planetexpress
+
+  tasks:
+   - name: Create directory where Space Station documents will reside
+     become_user: root
+     become: true
+     file:
+        # the var "ansible_user" is a host variable AND connection variable
+        path: "/home/{{ ansible_user }}/station_docs/"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+   - name: "Create directory where Space Station documents will reside"
+     copy:
+        # the var "ansible_user" is a host variable AND connection variable
+        # ansible_date_time.date is defined by gather_facts
+        dest: "/home/{{ ansible_user }}/station_docs/navdata-{{ ansible_date_time.date }}.txt"
+        content: "Earth\nMars\nSaturn\nEuropa"
+Save and exit.
+
+Run the playbook.
+
+student@bchd:~$ ansible-playbook ~/ans/playbook-file04.yml
+
+Answer the following questions:
+
+Q: What is the application for the file module?
+A: To create files or folders (directories) or remove them.
+Q: Is this module used often?
+A: All the time! There is another great module to check out, 'stat', which can return checksums and build conditionals when trying to determine IF a file or folder exists. However, if you need to ensure a file or folder is created, reach for 'file'.
+Great job! You have completed this lab.
+
+If you are tracking your code on GitHub, take a moment and perform a commit.
+
+cd ~/ans/
+git status
+git add ~/ans/*
+git commit -m "learning about the file module"
+git push https://github.com/your-account-name/ansible-dev master
+Type in username & password
+
