@@ -12,18 +12,22 @@
     
     # Mount can create a mount point,
     # but so can we, with the 'file' module
-    - name: Create the path to the mount point
-      file:
-              path: /home/student/bindmnt
-              state: directory
+    - name: Mount FS and make sure that prereqs are in place.
+      when: here_there == "present"
+      block:
 
-    - name: Bind mount a volume
-      mount:
-              path: /home/student/bindmnt # path to the mount point
-              src: /tmp                   # dev to be mounted on the path
-              opts: bind
-              fstype: none
-              state: "{{ here_there }}"   # present == device will be mnted and configured in /etc/fstab
-                                          # absent == devices will be unmounted and removed from /etc/fstab
-                                          # see documentation for other options
-                                          # mounted == device is mounted and configured in /etc/fstab. If mount point is not created, it will be created.
+         - name: Create the path to the mount point
+           file:
+                   path: /home/student/bindmnt
+                   state: directory
+
+         - name: Bind mount a volume
+           mount:
+                   path: /home/student/bindmnt # path to the mount point
+                   src: /tmp                   # dev to be mounted on the path
+                   opts: bind
+                   fstype: none
+                   state: "{{ here_there }}"   # present == device will be mnted and configured in /etc/fstab
+                                                # absent == devices will be unmounted and removed from /etc/fstab
+                                                # see documentation for other options
+                                                # mounted == device is mounted and configured in /etc/fstab. If mount point is not created, it will be created.
