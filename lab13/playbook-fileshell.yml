@@ -3,6 +3,9 @@
   hosts: planetexpress
   gather_facts: yes
 
+  vars:
+    delete: false
+
   tasks:
    - name: make a directory
      file:
@@ -11,3 +14,13 @@
 
    - name: use shell module with wildcarding
      shell: echo $HOME >> ~/output/path.txt
+
+   - name: Debug output
+     debug:
+             msg: "{{ delete }} |bool"
+
+   - name: delete file
+     file:
+             path: ~/output/path.txt
+             state: absent
+     when:  delete|bool
