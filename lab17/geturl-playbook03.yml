@@ -3,6 +3,10 @@
   hosts: localhost  # target ourselves
   connection: local # we do not want to SSH anywhere. Run these actions locally
 
+  vars:
+     site_user: sammy 
+     site_pw: larry 
+
   tasks:
     # in this task we alert Ansible to expect a 401 response
     # the 'register' keyword saves the response sent back to the uri module
@@ -19,8 +23,8 @@
     - name: Access the same URL with Basic Authentication and Download the file
       get_url:
         url: http://10.10.2.4/admin/secure.txt
-        url_password: larry
-        url_username: sammy
+        url_password: "{{ site_pw }}"
+        url_username: "{{ site_user }}"
         dest: ~/ansible-downloaded-the-secret-file.txt
 
     - name: Display the File contents
