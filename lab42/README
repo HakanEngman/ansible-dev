@@ -1,0 +1,280 @@
+YAML, JSON, Dynamic, and Cloud Inventories
+Lab Objective
+The objective of this lab is to build inventory from dynamic sources. Scripts may be used to perform lookups within databases, parse files, query APIs, as well as pull from other sources, to ultimately construct an inventory that Ansible may use to run against.
+
+Within cloud environments, users can build and delete virtual machines too rapidly to record to changes manually within an inventory file. Therefore, one popular application of dynamic inventorying, is when working with clouds such as Amazon (AWS) as well as OpenStack.
+
+Here are some terms to add to your vocabulary:
+Static Inventory - Users manually describe hosts within inventories
+Dynamic Inventory - Scripts (with Python being the popular go to) are used to pull data from various sources
+Hybrid Inventory - A combination of static and dynamic inventory techniques
+
+Acceptable formats for inventories are:
+- ini
+- JSON
+- YAML
+- Comma separated host lists
+
+Examples of 'comma separated hosts' lists include:
+
+
+    # define 2 hosts in command line
+    # ansible -i '10.10.2.6, 10.10.2.4' -m ping all
+
+    # DNS resolvable names
+    # ansible -i 'host1.example.com, host2' -m user -a 'name=me state=absent' all
+
+    # just use localhost
+    # ansible-playbook -i 'localhost,' play.yml -c local
+Introduction to Dynamic Inventory:
+https://docs.ansible.com/ansible/latest/user_guide/intro_dynamic_inventory.html#other-inventory-scripts
+
+Review documentation on inventory sources here:
+https://docs.ansible.com/ansible/latest/dev_guide/developing_inventory.html#inventory-sources
+
+Review the documentation on dynamic inventorying here:
+https://docs.ansible.com/ansible/latest/dev_guide/developing_inventory.html
+
+Procedure
+We will begin this lab by exploring building our own dynamic inventory with Python.
+
+Take a moment to clean up your Remote Desktop. For now, close all other terminal spaces or windows you might have open.
+
+Open a new terminal, then change directory to the /home/student/ directory.
+
+student@bchd:~$ cd ~
+
+Download the teardown script (you may already have this):
+
+student@bchd:~$ wget https://static.alta3.com/projects/ansible/deploy/max-teardown.sh
+
+Run the teardown script.
+
+student@bchd:~$ bash max-teardown.sh
+
+Download the setup script for this lab.
+
+student@bchd:~$ wget https://static.alta3.com/projects/ansible/deploy/pexpress-setup.sh
+
+Run the setup script for this lab.
+
+student@bchd:~$ bash pexpress-setup.sh
+
+Ping the each of the below lab hosts.
+
+student@bchd:~$ ping -c 1 10.10.2.3
+student@bchd:~$ ping -c 1 10.10.2.4
+student@bchd:~$ ping -c 1 10.10.2.5
+student@bchd:~$ ping -c 1 10.10.2.6
+
+We want to stay organized, so create a directory structure, ~/ans/inv/dev/.
+
+student@bchd:~$ mkdir -p ~/ans/inv/dev/
+
+Edit your inventory file.
+
+student@bchd:~$ vim ~/ans/inv/dev/hosts
+
+Ensure that you have the following entry within your inventory (you can have other group entries, just ensure you have 'at least' the following).
+
+
+[planetexpress]
+bender      ansible_host=10.10.2.3 ansible_user=bender
+fry         ansible_host=10.10.2.4 ansible_user=fry
+zoidberg    ansible_host=10.10.2.5 ansible_user=zoidberg
+farnsworth  ansible_host=10.10.2.6 ansible_user=farnsworth dnsip=9.9.9.9 ansible_python_interpreter=/usr/bin/python
+[planetexpress:vars]
+dnsip=8.8.8.8
+ansible_python_interpreter=/usr/bin/python3
+ansible_ssh_pass=alta3
+Save and exit.
+
+Now let's describe that same inventory, only use the YAML format. Remember, YAML is JSON and JSON is YAML. So transcribing our INI format to YAML is a huge step in producing an inventory with JSON as well. Make a new directory we can store our YAML inventories in.
+
+student@bchd:~$ mkdir -p ~/ans/inv/yaml/
+
+Create a ~/ans/inv/yaml/hosts.yaml file.
+
+student@bchd:~$ vim ~/ans/inv/yaml/hosts.yaml
+
+Create the following YAML file:
+
+
+---
+all:
+        hosts:
+                # if you had ungrouped hosts
+                # describe them here
+                # 10.10.2.2:
+                # 10.10.1.1:
+        children:
+                planetexpress:
+                        hosts:
+                                bender:
+                                        ansible_host: 10.10.2.3
+                                        ansible_user: bender
+                                fry:
+                                        ansible_host: 10.10.2.4
+                                        ansible_user: fry
+                                zoidberg:
+                                        ansible_host: 10.10.2.5
+                                        ansible_user: zoidberg
+                                farnsworth:
+                                        ansible_host: 10.10.2.6
+                                        ansible_user: farnsworth
+                                        dnsip: 9.9.9.9
+                                        ansible_python_interpreter: /usr/bin/python
+                        vars:
+                                dnsip: 8.8.8.8
+                                ansible_python_interpreter: /usr/bin/python3
+                                ansible_ssh_pass: alta3
+Save and exit.
+
+Ensure your copy of ansible.cfg is accurate.
+
+student@bchd:~$ vim ~/.ansible.cfg
+
+Your file should reflect the following values:
+
+
+[defaults]
+# default location of inventory
+# this can be a file or a directory
+inventory = /home/student/ans/inv/dev/
+# prevents playbook from hanging on new connections
+host_key_checking = no
+Save and exit.
+
+Run an Ansible Ad-Hoc command to proof-of-concept our YAML inventory file.
+
+student@bchd:~$ ansible all -i ~/ans/inv/yaml/hosts.yaml -m ping
+
+You should see ping pong push and pull responses from each of the four hosts described within the YAML inventory.
+
+Scripts may also be used to produce inventories, however, scripts will typically produce JSON. It's easier than it sounds. Create a new directory we can use to store our script.
+
+student@bchd:~$ mkdir -p ~/ans/inv/hybridinv/
+
+Create a python script within the new directory.
+
+student@bchd:~$ vim ~/ans/inv/hybridinv/inventory.py
+
+Create the following script:
+
+
+#!/usr/bin/python3
+"""Russell Zachary Feeser || rzfeeser@alta3.com"""
+
+## for accepting arguments from user at CLI
+import argparse
+
+## required for working with JSON (pystd. library)
+import json
+
+def main():
+    # this is what we will ultimately return
+    inventory = {}
+
+    # Called with `--list`
+    if args.list:
+        # inventory is result of calling example_inventory()
+        inventory = example_inventory()
+    # Called with `--host [hostname]`
+    elif args.host:
+        # Not implemented, since we return _meta info `--list`
+        # Let's put API request logic here...
+        inventory = empty_inventory()
+    # If no groups or vars are present, return an empty inventory.
+    else:
+        inventory = empty_inventory()
+
+    # print the result of inventory
+    print(json.dumps(inventory))  # from the json library use the
+                                  # DUMPString function, dumps()
+
+# Example inventory for testing.
+def example_inventory():
+    return {
+        'group': {
+            'hosts': ['bender', 'fry'],
+            'vars': {
+                'example_var1': 'proxyeast',
+                'example_var2': 'proxywest',
+                'ansible_ssh_pass': 'alta3',
+                'ansible_python_interpreter': '/usr/bin/python3'
+            }
+        },
+        '_meta': {
+            'hostvars': {
+                'bender': {
+                    'ansible_user': 'bender',
+                    'ansible_host': '10.10.2.3'
+                },
+                'fry': {
+                    'ansible_user': 'fry',
+                    'ansible_host': '10.10.2.4'
+                }
+            }
+        }
+    }
+
+# Empty inventory for testing.
+def empty_inventory():
+    return {'_meta': {'hostvars': {}}}
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--list', action = 'store_true')
+    parser.add_argument('--host', action = 'store')
+    args = parser.parse_args()
+    main()
+Save and exit.
+
+Make the script, ~/ans/inv/hybridinv/inventory.py executable.
+
+student@bchd:~$ chmod u+x ~/ans/inv/hybridinv/inventory.py
+
+In the above script, we hard coded some json within example_inventory(). In production, we would want our script to make an API call, or parse some file. If you're new to Python, start studying the latest Python3.x release. If you want to jump-start your learning of making API requests with Python3, study the requests library. To access the hard-coded JSON inventory within our script, just run the script with the --list parameter.
+
+student@bchd:~$ python3 ~/ans/inv/hybridinv/inventory.py --list
+
+Now try using your script to generate an inventory for an Ansible Ad-Hoc command. It won't matter that our ansible inventory is described as a differently in ~/.ansible.cfg as CLI options always override other settings. Notice that the --list parameter is no longer needed. That is because Ansible automatically calls all script with this parameter.
+
+student@bchd:~$ ansible all -m ping -i ~/ans/inv/hybridinv/inventory.py
+
+Try it again, this time, target just fry. In running this second command, understand that inventory.py is providing the potential candidates, much like the static hosts file provides. However, we still must select the individual host(s) from that candidate list.
+
+student@bchd:~$ ansible fry -m ping -i ~/ans/inv/hybridinv/inventory.py
+
+Let's build a hybrid inventory by adding a static file to our directory ~/ans/inv/hybridinv/
+
+student@bchd:~$ vim ~/ans/inv/hybridinv/hostszoidfarns.yaml
+
+Create the following YAML file.
+
+
+---
+all:
+        hosts:
+                zoidberg:
+                        ansible_host: 10.10.2.5
+                        ansible_user: zoidberg
+                        ansible_python_interpreter: /usr/bin/python
+                        ansible_ssh_pass: alta3
+                farnsworth:
+                        ansible_host: 10.10.2.6
+                        ansible_user: farnsworth
+                        ansible_python_interpreter: /usr/bin/python
+                        ansible_ssh_pass: alta3
+Save and exit.
+
+Run the Ansible Ad-Hoc command again, only this time, specify the directory ~/ans/inv/hybridinv/ the expected behavior is that ansible will read all of the files, and execute the script(s), found within the directory. Any encountered scripts will be run with the --list parameter.
+
+student@bchd:~$ ansible all -m ping -i ~/ans/inv/hybridinv/
+
+Some files extensions can be ignored. This behavior is configurable within ~/.ansible.cfg.
+
+Great job! Run the tear down script to stay cleaned up.
+
+student@bchd:~$ bash max-teardown.sh
+
