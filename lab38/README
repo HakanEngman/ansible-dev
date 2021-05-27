@@ -1,0 +1,97 @@
+Lab Objective
+Learning to use Ansible can be made easier by mastering the help utility known as ansible-doc. Where you can always reach for https://doc.ansible.com for guidance, it takes time to take your hands off the keyboard, open a browser, and "click around". Instead, it is recommended you build a dependence on using the ansible-doc utility, which will display the same information as the webpages, only more efficiently. Because the ansible-doc tool is reading the documentation directly from the plugin code actually installed on your system, it is likely to be "more accurate" than things you might find on the web.
+
+https://docs.ansible.com/ansible/latest/cli/ansible-doc.html
+Procedure
+Move into your home directory.
+
+student@bchd:~$ cd ~
+
+First get the help menu for ansible-doc
+
+student@bchd:~$ ansible-doc -h
+
+Start by getting help on the Python plugin type (-t) "module", specifically the mount module.
+
+student@bchd:~$ ansible-doc -t module mount
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+The -t module or --type module is actually the default parameter passed to ansible-doc
+
+student@bchd:~$ ansible-doc mount
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Return just the section of the help document that contains playbook examples (-s is for snippet).
+
+student@bchd:~$ ansible-doc -s mount
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get information about the technology type connection, specifically, ssh
+
+student@bchd:~$ ansible-doc -t connection ssh
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get information about the technology type connection, specifically, local
+
+student@bchd:~$ ansible-doc -t connection local
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get information about the technology type connection, specifically, network_cli
+
+student@bchd:~$ ansible-doc -t connection network_cli
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get information about the technology type lookup, specifically, env
+
+student@bchd:~$ ansible-doc -t lookup env
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+How would we know what kind of lookup plugins even exist? Get a list (-l) of all of them.
+
+student@bchd:~$ ansible-doc -t lookup -l
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+That's a bit much. Remove some of the results by providing a namespace, community.general
+
+student@bchd:~$ ansible-doc -t lookup -l community.general
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Remove some of the results by providing a namespace, community.kubernetes
+
+student@bchd:~$ ansible-doc -t lookup -l community.kubernetes
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get help on how to use the type of plugin, lookup, specifically, community.kubernetes.k8s
+
+student@bchd:~$ ansible-doc -t lookup community.kubernetes.k8s
+
+Scroll up and down with the arrow keys. Press q to quit.
+
+Get a list of every single Ansible module typed plugin.
+
+student@bchd:~$ ansible-doc -l
+
+Hmm, that was a bit much! Get a list of those relating to Dell!
+
+student@bchd:~$ ansible-doc -l dellemc
+
+Get all of those within the community.general namespace.
+
+student@bchd:~$ ansible-doc -l community.general
+
+Get information about the module community.general.jenkins_job.
+
+student@bchd:~$ ansible-doc community.general.jenkins_job
+
+Great! That's it for this lab. Moving forward, try to rely on ansible-doc for getting help.
+
