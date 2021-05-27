@@ -1,0 +1,52 @@
+
+PLAY [A playbook demonstrating Error Handling techniques] **********************
+
+TASK [Gathering Facts] *********************************************************
+ok: [zoidberg]
+ok: [fry]
+ok: [bender]
+ok: [farnsworth]
+
+TASK [Ensure the platforms we logged into are Debian] **************************
+skipping: [bender]
+skipping: [fry]
+skipping: [zoidberg]
+fatal: [farnsworth]: FAILED! => {"changed": false, "msg": "Ansible has detected this host is not part of the Debian family."}
+
+TASK [PRECHECK PHASE - FAILED] *************************************************
+fatal: [farnsworth]: FAILED! => {"changed": false, "msg": "PRECHECK PHASE - FAILED. Nothing to rollback. Exiting..."}
+
+TASK [Install services(s) to our remote host(s)] *******************************
+ok: [zoidberg]
+ok: [fry]
+ok: [bender]
+
+TASK [Turn up the service(s) installed on our remote host(s)] ******************
+ok: [fry] => (item=apache2)
+ok: [bender] => (item=apache2)
+ok: [zoidberg] => (item=apache2)
+ok: [fry] => (item=vsftpd)
+ok: [bender] => (item=vsftpd)
+ok: [zoidberg] => (item=vsftpd)
+
+TASK [Inject a fail] ***********************************************************
+fatal: [zoidberg]: FAILED! => {"changed": true, "cmd": "/bin/false", "delta": "0:00:00.011439", "end": "2021-05-27 10:08:34.985452", "msg": "non-zero return code", "rc": 1, "start": "2021-05-27 10:08:34.974013", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+fatal: [bender]: FAILED! => {"changed": true, "cmd": "/bin/false", "delta": "0:00:00.003414", "end": "2021-05-27 10:08:35.063109", "msg": "non-zero return code", "rc": 1, "start": "2021-05-27 10:08:35.059695", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+fatal: [fry]: FAILED! => {"changed": true, "cmd": "/bin/false", "delta": "0:00:00.003268", "end": "2021-05-27 10:08:35.068864", "msg": "non-zero return code", "rc": 1, "start": "2021-05-27 10:08:35.065596", "stderr": "", "stderr_lines": [], "stdout": "", "stdout_lines": []}
+
+TASK [Remove services(s) on our remote host(s)] ********************************
+changed: [bender]
+changed: [zoidberg]
+changed: [fry]
+
+TASK [MAINTENANCE PHASE - FAILED] **********************************************
+fatal: [bender]: FAILED! => {"changed": false, "msg": "MAINTENANCE PHASE - FAILED. Rollback complete. Exiting..."}
+fatal: [fry]: FAILED! => {"changed": false, "msg": "MAINTENANCE PHASE - FAILED. Rollback complete. Exiting..."}
+fatal: [zoidberg]: FAILED! => {"changed": false, "msg": "MAINTENANCE PHASE - FAILED. Rollback complete. Exiting..."}
+
+PLAY RECAP *********************************************************************
+bender                     : ok=4    changed=1    unreachable=0    failed=1    skipped=1    rescued=1    ignored=0   
+farnsworth                 : ok=1    changed=0    unreachable=0    failed=1    skipped=0    rescued=1    ignored=0   
+fry                        : ok=4    changed=1    unreachable=0    failed=1    skipped=1    rescued=1    ignored=0   
+zoidberg                   : ok=4    changed=1    unreachable=0    failed=1    skipped=1    rescued=1    ignored=0   
+
