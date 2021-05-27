@@ -1,0 +1,161 @@
+Ansible Training 24 May 2021 - Dell_EMC.   Zach Feeser
+
+https://alta3research.my.webex.com/alta3research.my-en/j.php?MTID=mf5937f67e5df99f4508732c1ac9596d9
+
+
+Code repo: rzfeeser 
+
+Day 1
+
+Det finns en controller. (Master , där pyton bor mm.)
+Plugins ( ibland modules ) Skrivna i ofta i Python. Man sätter config för Ansible i ansible.cfg
+
+Installera 
+sudo apt eller yum install python3-pip -y sudo python3 -m pip install sensible
+
+Ansible 
+	Python
+		Plugins
+			module
+			lookup
+			connections
+			actions
+
+Bra att läsa om Yaml
+https://yaml.org/spec/1.2/spec.html
+
+Kolla Loop_control för att sätta andra parametrar kring {{ item }} etc
+
+Day 2
+Tips
+Om du gör en loop
+Loop: {{ variable.get(‘people’) , [] }}    ;; OM ‘variable’ inte returnerar något använd en tom lista.
+
+Dumpa alla variabler i Ansible :: ansible-config dump !!
+
+PMAX ANsible
+Installer I max lab med —ignore-certs vid install
+Installera PIP på controlstationen(ansible master)
+root@AnsibleHost > python3 -m pip install pyU4v==3.1.7  eller
+python3 -m pip —trusted-host << nn >> install pyU4v==3.1.7  yum install git -y
+
+
+Om en modul slutar på nnn_gatherfacts hamnar output i ansible_facts
+
+DAG 3 
+
+& Skapar ett “klipp”
+dell:    &DELLCREDENTIALS
+   User: someone    Pw: somepw  Använd hela med:
+*DELLCREDS
+
+
+Jinja - Ett filter
+https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html
+https://jinja.palletsprojects.com/en/3.0.x/
+https://jinja.palletsprojects.com/en/3.0.x/templates/#list-of-builtin-filters
+
+Jinja startar med {% eller {#   och slutar med #}  eller %} 
+
+Configfiler ska starta med ## {{ ansible_managed }} — Good practice.
+Templates ska ligga i mappen templates
+
+IF statement
+{% if fstab_entries is defined %}
+…
+{% else %}
+…
+{% endif %}
+
+For statement
+{% for fs in fstab_entries %}
+{{fs.device}} {{fs.mount_point}} {{fs.file_system}} {{fs.options}} {{fs.backup}} {{fs.file_sys_check}}
+…
+{% endfor %}
+
+
+Start a new ROLE with template command: user:> ansible-galaxy role init ~/ans/roles/my_role
+
+Collections - template structure: .
+└── hakan
+    └── myfirstcollection
+        ├── README.md
+        ├── docs
+        ├── galaxy.yml
+        ├── playbooks
+        ├── plugins
+        │   ├── README.md
+        │   ├── filters
+        │   ├── lookups
+        │   └── modules
+        └── roles 
+README.md: What is this collection about
+galaxy.yml: Contains metadata about your collection
+docs/: local documentation for the collection
+playbooks/: playbooks reside here
+playbooks/tasks/: this holds 'task list files' for include_tasks/import_tasks usage
+plugins/: all ansible plugins and modules go here, each in its own subdir
+(example) plugins/modules/: ansible modules
+(example) plugins/lookups/: lookup plugins
+(example) plugins/filters/: Jinja2 filter plugins
+plugins/... rest of plugins
+README.md: a description of the new functionality provided by the plugins
+roles/: directory for ansible roles
+
+Eller gå till: https://github.com/bcoca/collection
+
+En collection måste göra build för att distribueras. ansible-galaxy collection build —output-path <..> 
+Installera m.h.a. ansible-galaxy collection install <…>.tar.gz
+
+
+rescue:   <— OM det går fel
+fail: kanske inte toppen, har inte when clause, men lägg gärna till en fail:  i sista steget så att vi ser att det gick fel. (Men allt är redan återställt.) Ett bra alternativ till fail är assert: 
+
+
+
+DAG 4 (Torsdag)
+edulab.emc.com —> kör PMAX på nätet.
+
+ansible-galaxy collection install dellemc.isilon —ignore-certs
+
+python3 -m -pip install —trusted-hosts pypi.org —trusted-host files.pythonhosted.org isi-sdk-8-1-1
+
+ https://github.com/dell/ansible-isilon/blob/1.1.0/dellemc_ansible/docs/Ansible%20for%20Dell%20EMC%20Isilon%20v1.1%20Product%20Guide.pdf
+
+
+Kolla sektioner:
+
+Tasks:
+
+Handlers: < sub_function typ>  
+Python tips
+Starta python3
+Vid prompten
+
+>>>Webster = {}
+>>>dir(Webster) 
+Använd något av de utan _ i namnet: >>>webster.count 
+>>> webster["summer"] = "hot"
+>>> webster.get("summer")
+'hot'
+>>> webster.get("spring","Not defined")
+'Not defined'
+>>> webster.get("summer","Not defined")
+'hot'
+>>> webster.keys()
+dict_keys(['summer', 'winter'])
+>>> exit()
+ Det går bra att köra python funktioner direkt i Ansible..  lstrip(‘nn’) etc..
+
+Vilka plugins som gar att hitta i systemet:  	>> ansible-doc -t lookup -l
+Add filters to limit output:
+     >> ansible-doc -t lookup -l community.kubernetes
+För att hitta manual för en modul:     >> ansible-doc -t module mount
+Short version:    >> ansible-doc -t module -s mount
+
+ansible-doc -l dellemc
+
+MODULER Mer att läsa: https://docs.ansible.com/ansible/latest/dev_guide/developing_modules_general.html
+
+
+
