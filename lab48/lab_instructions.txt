@@ -1,0 +1,149 @@
+Lab Objective
+The objective of this lab is to learn to use Ansible to call several different flavors of script, including Python and Perl, but any flavor of script might be drawn on. This really isn't best practice, in fact, it would be a much better idea to just write an ansible module that did this. Calling scripts is typically a get-it-done approach, whereas an Ansible module should be highly-reviewed, stabilized, and ensured to be idempotent before it became a module and was able to be used within a playbook.
+
+Read about the script module here:
+https://docs.ansible.com/ansible/latest/modules/script_module.html
+
+Procedure
+To begin, we should create a place to store the scripts we want to have executed on our remote hosts.
+
+student@bchd:~$ mkdir -p ~/ans/scripts/
+
+Now create a Python script, ~/ans/scripts/nasaLookup.py
+
+student@bchd:~$ vim ~/ans/scripts/nasaLookup.py
+
+Create the following Python script.
+
+
+#!/usr/bin/python3
+
+import requests
+
+astros = requests.get("http://api.open-notify.org/astros.json")
+print(astros.json()["people"])
+Save and exit.
+
+Before invoking the script, you might want to visit http://api.open-notify.org/astros.json in a browser and see the JSON returned by an HTTP GET request.
+
+Before running the script, use pip to ensure requests is installed. It is a fairly commonly python library used to make API calls with the HTTP protocol, so it is likely already installed. The tool pip installs code freely available from https://pypi.org
+
+student@bchd:~$ python3 -m pip install requests
+
+Try running the Python script.
+
+student@bchd:~$ python3 ~/ans/scripts/nasaLookup.py
+
+Create a playbook to utilize our Python script.
+
+student@bchd:~$ vim ~/ans/scripts/playbook-script01.yml
+
+Create the following playbook that invokes the python script.
+
+
+---
+- name: Playbook that runs a Python script
+  hosts: localhost
+
+  tasks:
+  - name: Copy script to target hosts and execute it
+    script: ~/ans/scripts/nasaLookup.py
+    args:
+      executable: /usr/bin/python3
+    register: results    # save the JSON sent back by our script
+
+  - name: Print out the 'results'
+    debug:
+      var: results
+      # notice there is a stdout and stdout_lines
+Save and exit.
+
+Run the playbook.
+
+student@bchd:~$ ansible-playbook ~/ans/scripts/playbook-script01.yml
+
+We could use the uri module to make Ansible send an HTTP GET message, and mimic what a script does, but that's not the point. The goal right now is to understand that we can make Ansible run scripts. Let's try making ansible run a Perl script.
+
+student@bchd:~$ vim ~/ans/scripts/starWars.pl
+
+Create the following Perl script.
+
+
+#!/usr/bin/perl
+
+# Modules used
+use strict;
+use warnings;
+
+# Print functions
+print("In an Ansible Galaxy far, far away\n");
+print("It is a period of civil war.\nRebel spaceships, striking\n");
+print("from a hidden base, have won their first victory against\n");
+print("the evil Galactic Empire.\n")
+Save and exit.
+
+Try running the Perl script.
+
+student@bchd:~$ perl ~/ans/scripts/starWars.pl
+
+Create a playbook to utilize our Perl script.
+
+student@bchd:~$ vim ~/ans/scripts/playbook-script02.yml
+
+Create the following playbook that invokes the perl script.
+
+
+---
+- name: Playbook that runs a Perl script
+  hosts: localhost
+
+  tasks:
+  - name: Copy script to target hosts and execute it
+    script: ~/ans/scripts/starWars.pl
+    args:
+      executable: /usr/bin/perl
+    register: results    # save the JSON sent back by our script
+
+  - name: Print out the 'results'
+    debug:
+      var: results
+      # notice there is a stdout and stdout_lines
+Save and exit.
+
+Run the playbook.
+
+student@bchd:~$ ansible-playbook ~/ans/scripts/playbook-script02.yml
+
+CHALLENGE (OPTIONAL)- Write a playbook that performs a lookup on http://api.open-notify.org/astros.json without invoking the script module. If you get stuck, one possible solution is below. Hint: One possible solution uses the uri module to send an HTTP GET to the API, and register the results. Check out the URI module here: https://docs.ansible.com/ansible/latest/modules/uri_module.html
+
+CHALLENGE SOLUTION - Create the challenge solution, playbook-script01-rewrite.yml
+
+student@bchd:~$ vim ~/ans/scripts/playbook-script01-rewrite.yml
+
+CHALLENGE SOLUTION - Create the following challenge script solution.
+
+
+---
+- name: Playbook that sends HTTP GET to target URI
+  hosts: localhost
+
+  vars:
+    urltolookup: "http://api.open-notify.org/astros.json"
+
+  tasks:
+  - name: Lookup api with uri module
+    uri:
+      url: "{{ urltolookup }}"
+      method: GET
+    register: results    # save the JSON sent back by our script
+
+  - name: Print out the 'results'
+    debug:
+      var: results
+Save and exit.
+
+Try running your challenge solution.
+
+student@bchd:~$ ansible-playbook ~/ans/scripts/playbook-script01-rewrite.yml
+
+Great job! That is it for this lab.
