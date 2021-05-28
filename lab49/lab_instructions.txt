@@ -1,0 +1,122 @@
+The objective of this lab is to combine our Ansible and Python skillset. Python contains a templating language called "Jinja." Jinja is now on its second version, so we call it Jinja2.
+
+Jinaj2 Homepage - http://jinja.pocoo.org/docs/2.10/
+At the time of this writing the official documentation on Jinja2 filters is a bit lacking in examples, but here is what's available:
+
+Ansible Documentation on Jinja Filters - https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html
+Jinja2 Built-in Filter Documentation - http://jinja.pocoo.org/docs/2.10/templates/#list-of-builtin-filters
+Think of a filter as an abstracted call to some Python code. The thing is, we can call Python code (methods) directly from Ansible. As you'll see in this example, sometimes it makes sense to use a filter, sometimes a Python method, and sometimes both!
+
+Procedure
+Move into (or create) a new directory to work in, /home/student/ans/
+
+student@beachhead:~$ mkdir ~/ans/
+
+Move into the ~/ans directory.
+
+student@beachhead:~$ cd ~/ans/
+
+Now create a script called pyjinja/pythonandjinja01.yml
+
+student@beachhead:~/ans$ vim ~/ans/pythonandjinja01.yml
+
+Add the following into your new playbook:
+
+
+---
+- name: A Play to play with Python
+  hosts: localhost
+
+  vars:
+    test_list:
+      - '192.168.2.1'
+      - '10.10.0.2'
+      - 'host.example.org'
+      - '192.168.70.0/24'
+      - 'fe80::100/10'
+      - 'True'
+      - 'Witcher 3: The Wild Hunt'
+      - 'Earl Grey Tea, hot'
+    mytest_string: "NCC1701 USS Enterprise"
+    myaddresses: ['192.168.2.101', '10.0.3.50', '171.172.32.1']
+
+  tasks:
+  # Use the Jinja ipaddr filter to reveal JUST IPs from a mixed list.
+  - name: Just want the IPs
+    debug:
+      msg: "{{ test_list | ipaddr }}"
+
+  # Use the Jinja random_mac filter to finish a MAC address.
+  - name: Spawn rando mac
+    debug:
+      msg: "{{'52:54:00' | random_mac }}"
+
+  # When using the var statement, Ansible would prefer you did NOT use mustache brackets
+  - name: Some don't need mustache brackets
+    debug:
+      var: "'52:54:11'|random_mac"
+  # FYI - The no mustache brackets rule also applies to when statements
+  # when: never use {{    }} in when statements
+
+  # Here is an example of using a Python method to parse our data
+  # This method returns a bool (true/false)
+  - name: Test if our string ends in prise
+    debug:
+      msg: "{{ mytest_string.endswith('prise') }}"
+      
+  # Building a conditional around our task-
+  # this will only print if our string ends in prise
+  - name: This only prints when this tests true using python
+    debug:
+      msg: "Ahh, but is it the Enterprise subclass A, B, C, or D?"
+    when: mytest_string.endswith('prise')
+
+  # Sometimes a Jinja filter seems like more work to learn than just using a Python method
+  - name: Jinja2 way of capitalizing a string
+    debug:
+      msg: "{{ mytest_string | capitalize }}"
+
+  # Same example, only we use a Python method, not a Jinja2 filter
+  # notice how Python methods use dot notation and Jinja uses pipes
+  - name: Python way of capitalizing a string
+    debug:
+      msg: "{{ mytest_string.capitalize() }}"
+
+  # Sometimes we need to use Python AND Jinja.
+  # ipaddr returns all addresses that match the scope.
+  # The square brackets selects the only item in the list.
+  # We split the IP address into a list containing 4 items (each item is an octet).
+  # We then select the 3rd item (4th in the list) and display it to the screen
+  - name: Pop the number 50 on the screen
+    debug:
+      msg: "{{ (myaddresses|ipaddr('10.0.0.0/8'))[0].split('.')[3] }}"
+The filter ipaddr requires the package netaddr to run. Install that now with pip.
+
+student@beachhead:~/ans$ python3 -m pip install netaddr
+
+Read the comments on the code, then save and exit.
+
+Time to run pythonandjinja01.yml
+
+student@beachhead:~/ans$ ansible-playbook pythonandjinja01.yml
+
+Examine the results and continue to run the code as necessary.
+
+CODE CUSTOMIZATION 01 (OPTIONAL) - Select a filter from one of the two locations (possibly both) and see if you can use it in the playbook; write a new task if need be.
+
+https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html
+http://jinja.pocoo.org/docs/2.10/templates/#list-of-builtin-filters
+CODE CUSTOMIZATION 02 (OPTIONAL) - See if you can find a Python method to use within the playbook. You can write a new task if you'd like.
+
+If you're tracking your code in GitHub, issue the following commands:
+
+cd ~/ans/
+git status
+git add ~/ans/*
+git commit -m "python methods and jinja2"
+git push https://github.com/your-account-name/ansible-dev master
+Type in username & password
+
+
+
+https://docs.ansible.com/ansible/latest/user_guide/playbooks_filters.html#ip-address-filters
