@@ -158,4 +158,11 @@ ansible-doc -l dellemc
 MODULER Mer att läsa: https://docs.ansible.com/ansible/latest/dev_guide/developing_modules_general.html
 
 
+DAY 5
+
+GIT tips , om man vill plocka bort en fil som är ändra och man inte vill ha den som untracked.
+git update-index --assume-unchanged ../vars/mypasswords.yml
+
+Ansible Vault läsning
+https://docs.ansible.com/ansible/latest/user_guide/vault.html
 
