@@ -1,0 +1,197 @@
+iOpen a new terminal, then change directory to the /home/student/ directory.
+
+student@bchd:~$ cd ~
+
+Great! Now create a directory to store variables in.
+
+student@bchd:~$ mkdir -p ~/ans/vars
+
+Move into the ~/ans directory.
+
+student@bchd:~$ cd ~/ans
+
+Open a new text file that we can encrypt with ansible-vault.
+
+student@bchd:~/ans$ vim ~/ans/vars/mypasswords.yml
+
+Create the following:
+
+
+---
+datacenter: pennsylvania
+hostname: tardis
+password: DoctorWho?TheGoodDoctor
+secondary: tardis2
+dlspeed: Download_60M
+upspeed: Upload_20M
+password2: QuestForGlory1989EGA
+password3: LauraBowDaggerOfAmonRa1992
+Save and exit. Be sure the file is saved as, mypasswords.yml
+
+Now let's encrypt that file with ansible-vault.
+
+student@bchd:~/ans$ ansible-vault encrypt vars/mypasswords.yml
+
+When prompted, type the password qwerty
+
+When prompted, re-type the password qwerty
+
+Great. Now print out the encrypted file.
+
+student@bchd:~/ans$ cat vars/mypasswords.yml
+
+If it worked, you should 'just' see an encrypted file. This file could be considered quite a bit safer than clear text.
+
+To edit an encrypted file in place, use the ansible-vault edit command. This command will decrypt the file to a temporary file and allow you to edit the file, saving it back when done and removing the temporary file:
+
+student@bchd:~/ans$ ansible-vault edit vars/mypasswords.yml
+
+When prompted, type the password qwerty
+
+You don't need to make any changes, just appreciate that the file is decrypted for editing purposes only. Exit the file.
+
+To ensure that is the case, cat the file again. It should still be encrypted.
+
+student@bchd:~/ans$ cat vars/mypasswords.yml
+
+Now let's decrypt that file with ansible-vault.
+
+student@bchd:~/ans$ ansible-vault decrypt vars/mypasswords.yml
+
+You should be able to view and understand the file, as it has now been decrypted.
+
+student@bchd:~/ans$ cat vars/mypasswords.yml
+
+Open a new text file to create a playbook that we might encrypt with ansible-vault.
+
+student@bchd:~/ans$ vim playbook-vault01.yml
+
+Create the following:
+
+
+---
+- hosts: localhost
+
+  tasks:
+    - name: Print to the screen
+      debug:
+        msg: "This is your secret playbook. You and you alone must retain control of it. Your mission, Jim, should you choose to accept it. Is to first encrypt, then run this playbook (while it is encrypted). This message will self-destruct in 5 seconds."
+Save and exit.
+
+Try running your unencrypted playbook.
+
+student@bchd:~/ans$ ansible-playbook playbook-vault01.yml
+
+Now, encrypt the playbook file with ansible-vault.
+
+student@bchd:~/ans$ ansible-vault encrypt playbook-vault01.yml
+
+When prompted, type the password qwerty
+
+When prompted, re-type the password qwerty
+
+Print out the encrypted file.
+
+student@bchd:~/ans$ cat playbook-vault01.yml
+
+Once again, if it worked, you should 'just' see an encrypted file. This file could be considered quite a bit safer than clear text.
+
+Next run the encrypted playbook.
+
+student@bchd:~/ans$ ansible-playbook --vault-id @prompt playbook-vault01.yml
+
+When prompted, enter qwerty and the playbook should run.
+
+Suppose we have a variable file that we're interested in keeping secret and safe. This could be credentials or sensitive IP addresses. Let's start by creating an encrypted vars file.
+
+student@bchd:~/ans$ vim ~/ans/vars/oscreds.yml
+
+Create the following, which mimics the values required to authenticate to OpenStack.
+
+
+---
+imscloud:
+  auth:
+    auth_url: http://192.168.122.10:35357/
+    project_name: demo
+    username: demo
+    password: 0penstack
+  region_name: RegionOne
+Save and exit.
+
+Encrypt this new credential file with ansible vault.
+
+student@bchd:~/ans$ ansible-vault encrypt vars/oscreds.yml
+
+When prompted, enter qwerty
+
+Now create a playbook.
+
+student@bchd:~/ans$ vim playbook-vault02.yml
+
+Create the following:
+
+
+---
+- name: Extra vars vault
+  hosts: localhost
+
+  # reference the encrypted variable file
+  vars_files:
+    - vars/oscreds.yml
+
+  tasks:
+    - name: print out encrypted vars
+      debug:
+        msg: "{{ imscloud }}"
+Save and exit.
+
+Now run the playbook, and pass a command to decrypt the vars_file.
+
+student@bchd:~/ans$ ansible-playbook playbook-vault02.yml -e @vars/oscreds.yml --ask-vault-pass
+
+The playbook should run, and print out the credentials found within the password file. Obviously, you wouldn't want to print out your credentials! However, this proves that your variables have been successfully decrypted for the purposes of running your playbook. Double check that the file itself is still encrypted.
+
+student@bchd:~/ans$ cat ~/ans/vars/oscreds.yml
+
+Suppose we wanted to create a playbook with encrypted vars inside of it. Run the following command to encrypt the string pAssw0rD and map it to the key mypass. Note, if you were to use a $ in your password, be sure to ESCAPE it with a backslash, or it will be interpreted by the shell (passing $$ at the shell will echo a PID). Therefore, the proper way to pass a password containing $ symbols is pA\$\$w0rD
+
+student@bchd:~/ans$ ansible-vault encrypt_string "pAssw0rD" --name "mypass"
+
+Copy everything from mypass to the end of the encryption code.
+
+Create a playbook.
+
+student@bchd:~/ans$ vim ~/ans/playbook-vault03.yml
+
+Create the following playbook. You'll need to edit the following, and replace the value under vars: with the value you copied out of the CLI:
+
+
+---
+- name: encrypt a string
+  hosts: localhost
+
+  # edit the following section with your string
+  vars:
+    mypass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          3037393038326336356...
+          6236626566653833373...
+          3761633065666139373...
+          6232623765613133640...
+
+  tasks:
+    - name: print an encrypted string
+      debug:
+         msg: "{{ mypass  }}"
+Save and exit.
+
+Run your playbook with the following command. When prompted, enter qwerty
+
+student@bchd:~/ans$ ansible-playbook playbook-vault03.yml --ask-vault-pass
+
+The playbook should display pAssw0rD
+
+Great job!
+
+
