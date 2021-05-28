@@ -1,0 +1,198 @@
+Roles and Molecule
+Lab Objective
+Welcome to the new hotness in role creation and testing. Roles are highly organized playbooks that work as a kind of building block for creating more advanced playbooks. Molecule is a brand new tool that ships with Ansible v2.7 (and beyond). The purpose of this tool is testing roles (as in, if they are properly constructed) which is accomplished via a series of Python scripts. In this lab we will examine Ansible roles as well as using the Molecule tool.
+
+Start by reviewing the documentation: https://molecule.readthedocs.io/en/latest/index.html
+
+For testing purposes, review usage of assert: https://docs.ansible.com/ansible/latest/modules/assert_module.html
+
+Procedure
+Start with a clean desktop. Close any windows you might currently have open.
+
+Run groups. If it says something about docker, you can skip the next few steps.
+
+groups
+
+For this lab to run we'll need to give Docker permission to run as sudo. Issue the following command:
+
+student@bchd:~$ sudo usermod -aG docker student
+
+Create a new shell with all the current settings and users carried over.
+
+student@bchd:~$ su - $USER
+
+Enter alta3
+
+This command should now show a Docker group.
+
+student@bchd:~$ groups
+
+You should be able to run this Docker command successfully (i.e. without sudo). NOTE: If this fails, run the command again (and again) until it works.
+
+student@bchd:~$ docker run hello-world
+
+Run an apt update.
+
+student@bchd:~$ sudo apt-get update
+
+Install libssl-dev
+
+student@bchd:~$ sudo apt install libssl-dev
+
+Install setuptools.
+
+student@bchd:~$ python3 -m pip install --upgrade --user setuptools
+
+We need to install Molecule, which is available via pip from the Pypi repo. We also throw the instruction to install the docker driver.
+
+student@bchd:~$ python3 -m pip install --user "molecule[docker,lint]"
+
+Great! See what version you're running. You just installed it, so it should be the latest-ish version of the tool.
+
+student@bchd:~$ molecule --version
+
+Before we start integrating Molecule into an existing role, let's take a look at using Molecule itself to init a new role within itself:
+
+student@bchd:~$ molecule init role alta3.example --driver-name docker
+
+If the command worked, you'll see that a new role was initialized within /home/student/alta3.example successfully. This command uses ansible-galaxy behind the scenes to generate a new Ansible role, then it injects a Molecule directory in the role and sets it up to run builds and test runs in a Docker environment. Inside the Molecule directory is a default directory indicating the default test scenario. It contains the following:
+
+student@bchd:~$ cd ~/alta3.example && ls
+
+This looks like the structure of a basic role only a Molecule directory is also present. Let's look inside.
+
+student@bchd:~$ cd ~/alta3.example/molecule/default/ && ls
+
+Below is a breakdown each of the files you are seeing.
+
+converge.yml: Contains instructions for how to handle the converge command.
+verify.yml: Contains the tests to run against the virtual environment for testing your role.
+molecule.yml: Tells Molecule everything it needs to know about your testing: what OS to use, how to lint your role, how to test your role, etc. We'll cover a little more on this later.
+We can customize just about any of these files, but they will work in their current state.
+
+Move down two directories.
+
+student@bchd:~/alta3.example/molecule/default$ cd ../../
+
+Verify that Molecule has no instances up and running.
+
+student@bchd:~/alta3.example$ molecule list
+
+Tell Molecule to create an instance to test with.
+
+student@bchd:~/alta3.example$ molecule create
+
+Verify that Molecule has an instance up and running.
+
+student@bchd:~/alta3.example$ molecule list
+
+Our role is currently empty. Let's try adding a simiple task.
+
+student@bchd:~/alta3.example$ vim tasks/main.yml
+
+Add the following into main.yml
+
+
+- name: Molecule Hello World!
+  debug:
+    msg: Hello, World!
+Save and exit.
+
+We can now tell Molecule to test our role against our instance.
+
+student@bchd:~/alta3.example$ molecule converge
+
+If we want to see the effects it had on the instance we can inspect changes with:
+
+student@bchd:~/alta3.example$ molecule login
+
+To be clear, you're in a virtual environment (like a pretend server). You can run changes against it and then inspect them... pretty cool! All right, escape the instance:
+
+root@instance:/# exit
+
+Now destroy the instance.
+
+student@bchd:~/alta3.example$ molecule destroy
+
+The instance should no longer exist.
+
+student@bchd:~/alta3.example$ molecule list
+
+Edit the tasks again, let's make ansible install something.
+
+student@bchd:~/alta3.example$ vim tasks/main.yml
+
+Add the following into main.yml
+
+
+# tasks file for alta3.example
+- name: Molecule Hello World!
+  debug:
+    msg: Hello, World!
+    
+# install cowsay
+- name: install cowsay
+  package:
+    name: cowsay
+Save and exit.
+
+Let's build a test as well.
+
+student@bchd:~/alta3.example$ vim molecule/default/verify.yml
+
+The molecule testing engine used to be pytest, but has been replaced with Ansible! Keeping everything in the Ansible language makes it a bit easier to grok. When you build tests, it's likely you'll make heavy use of the assert module. This will "assert that..." some condition tests true. Replace verify.yml with the following.
+
+
+---
+# This is an example playbook to execute Ansible tests.
+#
+- name: Verify
+  hosts: all
+  tasks:
+  
+  # Review how to use the assert module
+  # https://docs.ansible.com/ansible/latest/modules/assert_module.html
+  - name: Example assertion
+    assert:
+      that: true  # test "that" true is true (its a silly test, it will always "work")
+
+  - name: Cowsay says hello
+    command: cowsay "hello"   # attempt to use the program cowsay
+    register: result      # this contains a run code that reveals if the command was successful
+
+  # Review how to use the assert module
+  # https://docs.ansible.com/ansible/latest/modules/assert_module.html
+  - name: Perform an assertion test. This will fail if result.rc is not equal to 0
+    assert:
+      that: result.rc == 0
+Save and exit.
+
+Create a test environment.
+
+student@bchd:~/alta3.example$ molecule create
+
+Run your role against the environment with the converge command
+
+student@bchd:~/alta3.example$ molecule converge
+
+Try running our verification tests with the verify command.
+
+student@bchd:~/alta3.example$ molecule verify
+
+Run an idempotence test. This will ensure nothing changes when the role is run a second time against the environment
+
+student@bchd:~/alta3.example$ molecule idempotence
+
+Rip down the old environment.
+
+student@bchd:~/alta3.example$ molecule destroy
+
+Try running a molecule test. This cycles through an entire full lifecycle of possible tests, which includes linting (best practice), checking for available dependencies, checking syntax, running the role against an instance (create, prepare and converge), testing for idempotence, then cleaning up the test instance.
+
+student@bchd:~/alta3.example$ molecule test
+
+Cool! You might want to try building out your own role and running a test against it. Some practical suggestions include bootstrapping a switch or perhaps spinning up a VM with a keypair the user passes as a variable.
+
+That's it for this lab! Nothing really to backup here, so don't worry about running any Git commands.
+
+
